@@ -5,29 +5,50 @@
 # This script is for Pokémon Essentials. It's a character selection screen
 # suggested for player selection or partner selection.
 #
-#===============================================================================
+#== INSTALLATION ===============================================================
 #
-# To this script works, put it above main and put a 32x32 background at 
-# "Graphics/Pictures/characterselectiontile" (may works with other sizes).
+# To this script works, put it above main OR convert into a plugin. Put a 32x32
+# background at "Graphics/Pictures/character_selection_tile" (may works with
+# other sizes).
 #
-# To call this script, use 'pbCharacterSelection(overworld,battle)' passing two
-# arrays as arguments: the first must have the overworld graphics names and the
-# second must have the battle graphics, both using "Graphics/Pictures/" as 
-# directory. Both arrays must have the same since that can't be an odd number.
+#== HOW TO USE =================================================================
+#
+# Call 'startCharacterSelection(overworld,battle)' passing two arrays with the
+# same size as arguments: 
+#
+# - The first include overworld graphics names (from 
+# "Graphics/Pictures/Characters").
+# - The second include battler/front graphics names (from 
+# "Graphics/Pictures/Trainers" or "Graphics/Pictures/Characters").
+#
 # The return is the player selected index, starting at 0. 
+#
+#== EXAMPLES ===================================================================
 #
 # An example that initialize the player:
 #
-# overworld = ["trchar000","trchar001","trchar002","trchar003"]
-# battle = ["trainer000","trainer001","trainer002","trainer003"]
-# result = pbCharacterSelection(overworld,battle) 
-# pbChangePlayer(result)
+#  overworld = ["trainer_POKEMONTRAINER_Red","trainer_POKEMONTRAINER_Leaf",
+#    "trainer_POKEMONTRAINER_Brendan","trainer_POKEMONTRAINER_May"]
+#  battle = ["POKEMONTRAINER_Red","POKEMONTRAINER_Leaf",
+#    "POKEMONTRAINER_Brendan","POKEMONTRAINER_May"]
+#  result = startCharacterSelection(overworld,battle) 
+#  pbChangePlayer(result+1)
 #
 #===============================================================================
 
+if defined?(PluginManager) && !PluginManager.installed?("Character Selection")
+  PluginManager.register({                                                 
+    :name    => "Character Selection",                                        
+    :version => "1.1",                                                     
+    :link    => "https://www.pokecommunity.com/showthread.php?t=338481",             
+    :credits => "FL"
+  })
+end
+
 class CharacterSelectionScene
-  SPEED=2 # Can be 1, 2, 4 or 8.
-  TURNTIME=128 # In frames
+  BACKGROUND_SPEED = 3
+  ANIMATION_FRAME_INTERVAL = 4 # Increase for slower animation.
+  FRAMES_TO_TURN = 128
   
   def pbStartScene(overworld,battle)
     @overworld = overworld
@@ -35,8 +56,9 @@ class CharacterSelectionScene
     @sprites={}
     @viewport=Viewport.new(0,0,Graphics.width,Graphics.height)
     @viewport.z=99999
-    @sprites["bg"]=CharacterSelectionPlane.new(SPEED,TURNTIME,@viewport)
-    @sprites["bg"].setBitmap("Graphics/Pictures/characterselectiontile")
+    @sprites["bg"]=CharacterSelectionPlane.new(
+      BACKGROUND_SPEED,FRAMES_TO_TURN,@viewport)
+    @sprites["bg"].setBitmap("Graphics/Pictures/character_selection_tile")
     @sprites["arrow"]=IconSprite.new(@viewport)
     @sprites["arrow"].setBitmap("Graphics/Pictures/selarrow")
     @sprites["battlerbox"]=Window_AdvancedTextPokemon.new("")
@@ -48,18 +70,16 @@ class CharacterSelectionScene
     @sprites["battler"]=IconSprite.new(384,284,@viewport)
     # Numbers for coordinates calculation
     lines = 2
-    marginX = 64
+    totalWidth = 512
+    totalHeight = 232
+    marginX = totalWidth/((@overworld.size/2.0).ceil+1)
     marginY = 72
-    lastPointX = 512
-    lastPointY = 232
-    diferenceX = lastPointX - marginX*2
-    diferenceY = lastPointY - marginY*2
     for i in 0...@overworld.size
       @sprites["icon#{i}"]=AnimatedChar.new(
-          "Graphics/Characters/"+@overworld[i],4,16/SPEED,TURNTIME,@viewport)
-      @sprites["icon#{i}"].x= @overworld.size<=2 ? marginX + (diferenceX / 2) :
-          marginX+(diferenceX*(i/2))/((@overworld.size-1)/2)
-      @sprites["icon#{i}"].y=marginY+diferenceY*(i%lines)
+          "Graphics/Characters/"+@overworld[i],4,
+          [ANIMATION_FRAME_INTERVAL-1,0].max, FRAMES_TO_TURN, @viewport)
+      @sprites["icon#{i}"].x = marginX*((i/2).floor+1)
+      @sprites["icon#{i}"].y = marginY+(totalHeight - marginY*2)*(i%lines)
       @sprites["icon#{i}"].start
     end
     updateCursor
@@ -74,15 +94,22 @@ class CharacterSelectionScene
   def updateCursor(index=nil)
     @index=0
     if index
-      pbSEPlay("Choose",80)
+      pbPlayCursorSE
       @index=index
     end
     @sprites["arrow"].x=@sprites["icon#{@index}"].x-32
     @sprites["arrow"].y=@sprites["icon#{@index}"].y-32
-    @sprites["battler"].setBitmap("Graphics/Characters/"+@battle[@index])
+    @sprites["battler"].setBitmap(trainerBitmapPath(@battle[@index]))
     @sprites["battler"].ox=@sprites["battler"].bitmap.width/2
     @sprites["battler"].oy=@sprites["battler"].bitmap.height/2
-  end  
+  end
+
+  def trainerBitmapPath(spriteName)
+    ret = pbResolveBitmap("Graphics/Trainers/"+spriteName)
+    return ret if ret
+    ret = pbResolveBitmap("Graphics/Characters/"+spriteName)
+    return ret
+  end
   
   def pbMidScene
    loop do
@@ -90,12 +117,13 @@ class CharacterSelectionScene
     Input.update
     self.update
     if Input.trigger?(Input::C)
-      pbSEPlay("Choose",80)
+      pbPlayDecisionSE
       if pbDisplayConfirm(_INTL("Are you sure?"))
-        pbSEPlay("Choose",80)
+        pbPlayDecisionSE
         return @index
+      else 
+        pbPlayCancelSE
       end
-      pbSEPlay("Choose",80)
     end
     lines=2
     if Input.repeat?(Input::LEFT)
@@ -123,7 +151,7 @@ class CharacterSelectionScene
    ret=-1
    oldtext=@sprites["messagebox"].text
    @sprites["messagebox"].text=text
-   using(cmdwindow=Window_CommandPokemon.new([_INTL("YES"),_INTL("NO")])){
+   using(cmdwindow=Window_CommandPokemon.new([_INTL("Yes"),_INTL("No")])){
      cmdwindow.z=@viewport.z+1
      cmdwindow.visible=false
      pbBottomRight(cmdwindow)
@@ -190,33 +218,18 @@ class CharacterSelectionScene
 
   class AnimatedChar < AnimatedSprite
     def initialize(*args)
-      viewport = args[4]
-      @sprite=Sprite.new(viewport)
-      @animname=pbBitmapName(args[0])
-      @framecount=args[1]
-      @frameskip=[1,args[2]].max
-      @turnTime=args[3]
-      @realframes=0
       @realframeschar=0
       @direction=0
-      begin
-        @animbitmap=AnimatedBitmap.new(animname).deanimate
-      rescue
-        @animbitmap=Bitmap.new(framecount*4,32)
-      end
-      if @animbitmap.width%framecount!=0
-        raise _INTL("Bitmap's width ({1}) is not a multiple of frame count ({2}) [Bitmap={3}]",@animbitmap.width,framewidth,animname)
-      end
-      @framewidth=@animbitmap.width/@framecount
+      @turnTime=args[3]
+      super([args[0],args[1],args[2],args[4]])
       @frameheight=@animbitmap.height/4
-      @framesperrow=framecount
+      if @animbitmap.width%framecount!=0
+        raise _INTL("Bitmap's width ({1}) is not a multiple of frame count ({2}) [Bitmap={3}]",@animbitmap.width,@framewidth,@animname)
+      end
       @playing=false
-      self.bitmap=@animbitmap
-      self.src_rect.width=@framewidth
       self.src_rect.height=@frameheight
       self.ox=@framewidth/2
       self.oy=@frameheight
-      self.frame=0
     end
   
     def frame=(value)
@@ -261,7 +274,7 @@ class CharacterSelectionScreen
   end
 end
 
-def pbCharacterSelection(overworld,battle)
+def startCharacterSelection(overworld,battle)
   ret = nil
   pbFadeOutIn(99999) {
     scene=CharacterSelectionScene.new
