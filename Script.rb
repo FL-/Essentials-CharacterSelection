@@ -8,38 +8,52 @@
 #== INSTALLATION ===============================================================
 #
 # To this script works, put it above main OR convert into a plugin. Put a 32x32
-# background at "Graphics/Pictures/character_selection_tile" (may works with
-# other sizes).
+# background at "Graphics/UI/character_selection_tile" (may works with other 
+# sizes).
 #
 #== HOW TO USE =================================================================
 #
 # Call 'startCharacterSelection(overworld,battle)' passing two arrays with the
 # same size as arguments: 
 #
-# - The first include overworld graphics names (from 
-# "Graphics/Pictures/Characters").
-# - The second include battler/front graphics names (from 
-# "Graphics/Pictures/Trainers" or "Graphics/Pictures/Characters").
+# - The first include overworld graphics names (from "Graphics/Characters").
+# - The second include battler/front graphics names (from "Graphics/Trainers" 
+# or "Graphics/Characters").
 #
 # The return is the player selected index, starting at 0. 
 #
 #== EXAMPLES ===================================================================
 #
-# An example that initialize the player:
+# A basic example that initialize the player:
 #
-#  overworld = ["trainer_POKEMONTRAINER_Red","trainer_POKEMONTRAINER_Leaf",
-#    "trainer_POKEMONTRAINER_Brendan","trainer_POKEMONTRAINER_May"]
-#  battle = ["POKEMONTRAINER_Red","POKEMONTRAINER_Leaf",
-#    "POKEMONTRAINER_Brendan","POKEMONTRAINER_May"]
-#  result = startCharacterSelection(overworld,battle) 
-#  pbChangePlayer(result+1)
+#  overworld = [
+#   "trainer_POKEMONTRAINER_Red",
+#   "trainer_POKEMONTRAINER_Leaf"]
+#  battle = ["POKEMONTRAINER_Red",
+#   "POKEMONTRAINER_Leaf"]
+#  r=startCharacterSelection(
+#   overworld,battle) 
+#  pbChangePlayer(r+1)
+#
+# Example with 4 characters. This example won't change your character, just 
+# store the index result at game variable 70.  
+#
+#  overworld = [
+#    "trainer_POKEMONTRAINER_Red", "trainer_POKEMONTRAINER_Leaf",
+#    "trainer_POKEMONTRAINER_Brendan","trainer_POKEMONTRAINER_May"
+#  ]
+#  battle = [
+#    "POKEMONTRAINER_Red","POKEMONTRAINER_Leaf",
+#    "POKEMONTRAINER_Brendan","POKEMONTRAINER_May"
+#  ]
+#  $game_variables[70] = startCharacterSelection(overworld,battle) 
 #
 #===============================================================================
 
 if defined?(PluginManager) && !PluginManager.installed?("Character Selection")
   PluginManager.register({                                                 
     :name    => "Character Selection",                                        
-    :version => "1.1",                                                     
+    :version => "1.2",                                                     
     :link    => "https://www.pokecommunity.com/showthread.php?t=338481",             
     :credits => "FL"
   })
@@ -58,9 +72,9 @@ class CharacterSelectionScene
     @viewport.z=99999
     @sprites["bg"]=CharacterSelectionPlane.new(
       BACKGROUND_SPEED,FRAMES_TO_TURN,@viewport)
-    @sprites["bg"].setBitmap("Graphics/Pictures/character_selection_tile")
+    @sprites["bg"].setBitmap("Graphics/UI/character_selection_tile")
     @sprites["arrow"]=IconSprite.new(@viewport)
-    @sprites["arrow"].setBitmap("Graphics/Pictures/selarrow")
+    @sprites["arrow"].setBitmap(arrowBitmapPath)
     @sprites["battlerbox"]=Window_AdvancedTextPokemon.new("")
     @sprites["battlerbox"].viewport=@viewport
     pbBottomLeftLines(@sprites["battlerbox"],5)
@@ -102,6 +116,13 @@ class CharacterSelectionScene
     @sprites["battler"].setBitmap(trainerBitmapPath(@battle[@index]))
     @sprites["battler"].ox=@sprites["battler"].bitmap.width/2
     @sprites["battler"].oy=@sprites["battler"].bitmap.height/2
+  end
+
+  def arrowBitmapPath
+    ret = pbResolveBitmap("Graphics/UI/sel_arrow")
+    return ret if ret
+    ret = pbResolveBitmap("Graphics/Pictures/selarrow")
+    return ret
   end
 
   def trainerBitmapPath(spriteName)
