@@ -1,0 +1,4 @@
+Name      = Character Selection
+Version   = 1.2.2
+Website   = https://www.pokecommunity.com/showthread.php?t=338481
+Credits   = FL
