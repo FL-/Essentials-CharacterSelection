@@ -47,6 +47,7 @@
 
 module CharacterSelection
   class Scene
+    LINES = 2
     BACKGROUND_SPEED = 120
     ANIMATION_FRAME_INTERVAL = 4 # Increase for slower animation.
     TURN_DURATION = 3.2
@@ -61,8 +62,6 @@ module CharacterSelection
       @sprites["bg"]=BackgroundPlane.new(BACKGROUND_SPEED,TURN_DURATION,@viewport)
       @sprites["bg"].setBitmap("Graphics/UI/character_selection_tile")
       @sync_sprite_array.push(@sprites["bg"])
-      @sprites["arrow"]=IconSprite.new(@viewport)
-      @sprites["arrow"].setBitmap(Bridge.sel_arrow_path)
       @sprites["battlerbox"]=Window_AdvancedTextPokemon.new("")
       @sprites["battlerbox"].viewport=@viewport
       pbBottomLeftLines(@sprites["battlerbox"],5)
@@ -70,7 +69,9 @@ module CharacterSelection
       @sprites["battlerbox"].x=Graphics.width-@sprites["battlerbox"].width
       @sprites["battlerbox"].z=0
       @sprites["battler"]=IconSprite.new(384,284,@viewport)
-      create_character_sprites
+      create_character_sprites(512, 192, 32)
+      @sprites["arrow"]=IconSprite.new(@viewport)
+      @sprites["arrow"].setBitmap(Bridge.sel_arrow_path)
       update_cursor
       @sprites["messagebox"]=Window_AdvancedTextPokemon.new(_INTL("Choose your character."))
       @sprites["messagebox"].viewport=@viewport
@@ -79,19 +80,16 @@ module CharacterSelection
       pbFadeInAndShow(@sprites) { update }
     end
 
-    def create_character_sprites
-      lines = 2
-      totalWidth = 512
-      totalHeight = 232
-      marginX = totalWidth/((@overworld.size/2.0).ceil+1)
-      marginY = 72
+    def create_character_sprites(area_width, area_height, base_margin_y)
+      margin_x = area_width/((@overworld.size/LINES.to_f).ceil+1)
+      margin_y = base_margin_y + 40
       for i in 0...@overworld.size
         @sprites["icon#{i}"]=AnimatedChar.new(
           "Graphics/Characters/"+@overworld[i], 4, 
           Bridge.to_AnimatedSprite_frameskip([ANIMATION_FRAME_INTERVAL-1,0].max), TURN_DURATION, @viewport
         )
-        @sprites["icon#{i}"].x = marginX*((i/2).floor+1)
-        @sprites["icon#{i}"].y = marginY+(totalHeight - marginY*2)*(i%lines)
+        @sprites["icon#{i}"].x = margin_x*((i/LINES).floor+1)
+        @sprites["icon#{i}"].y = margin_y+(area_height + 40 - margin_y*2)*((i%LINES).to_f/(LINES-1))
         @sprites["icon#{i}"].start
         @sync_sprite_array.push(@sprites["icon#{i}"])
       end
@@ -124,12 +122,11 @@ module CharacterSelection
             pbPlayCancelSE
           end
         end
-        lines=2
         if Input.repeat?(Input::LEFT)
-          update_cursor(@index - lines >= 0 ? @index-lines : @overworld.size - lines + (@index%lines))
+          update_cursor(@index - LINES >= 0 ? @index-LINES : @overworld.size - LINES + (@index%LINES))
         end
         if Input.repeat?(Input::RIGHT)
-          update_cursor((@index + lines <= @overworld.size - 1) ? @index + lines : @index % lines)
+          update_cursor((@index + LINES <= @overworld.size - 1) ? @index + LINES : @index % LINES)
         end
         if Input.repeat?(Input::UP)
           update_cursor(@index != 0 ? @index - 1 : @overworld.size - 1)
