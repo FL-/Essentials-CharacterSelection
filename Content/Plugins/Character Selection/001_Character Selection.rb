@@ -89,7 +89,7 @@ module CharacterSelection
           Bridge.to_AnimatedSprite_frameskip([ANIMATION_FRAME_INTERVAL-1,0].max), TURN_DURATION, @viewport
         )
         @sprites["icon#{i}"].x = margin_x*((i/LINES).floor+1)
-        @sprites["icon#{i}"].y = margin_y+(area_height + 40 - margin_y*2)*((i%LINES).to_f/(LINES-1))
+        @sprites["icon#{i}"].y = margin_y+(area_height + 40 - margin_y*2)*(LINES==1 ? 0.5 : (i%LINES).to_f/(LINES-1))
         @sprites["icon#{i}"].start
         @sync_sprite_array.push(@sprites["icon#{i}"])
       end
